@@ -1,7 +1,17 @@
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
 }
+
 canvas {
   display: block;
+}
+
+.video-container {
+  position: absolute;
+  display: block;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }

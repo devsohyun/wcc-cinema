@@ -1,6 +1,15 @@
 import express from 'express';
-import http from 'http';
+import http, { get } from 'http';
 import { Server } from 'socket.io';
+import {
+  playlist,
+  currentIndex,
+  isPlaying,
+  startedAt,
+  pausedAt,
+  getCurrentVideo,
+  getCurrentTime,
+} from './playlist.js';
 
 //// REMOVE IF YOU PUT ON RENDER //////
 import open, { openApp, apps } from 'open'; //only needed for a simple development tool remove if hosting online see above
@@ -17,31 +26,42 @@ const totalSeats = 40;
 let seats = Array(totalSeats).fill(null);
 
 //Tell our Node.js Server to host our P5.JS sketch from the public folder
-app.use(express.static("public"));
+app.use(express.static('public'));
 
 // Setup Our Node.js server to listen to connections
 server.listen(port, () => {
-  console.log("listening on: "+port);
+  console.log('listening on: ' + port);
 });
 
 //// REMOVE IF YOU PUT ON RENDER //////
 //open in browser: dev environment only!
-await open(`http://localhost:${port}`);//opens in your default browser
+await open(`http://localhost:${port}`); //opens in your default browser
 //// REMOVE IF YOU PUT ON RENDER //////
 
-// Callback function for when our P5.JS sketch connects 
-io.on("connection", (socket) => {
+// Callback function for when our P5.JS sketch connects
+io.on('connection', (socket) => {
   console.log('client connected:', socket.id);
   // Add the new user's ID to the userId array
   userId.push(socket.id);
 
+  socket.emit('player-state', {
+    videoUrl: getCurrentVideo(),
+    isPlaying,
+    time: getCurrentTime(),
+  });
+
+  socket.emit('playlist-update', {
+    currentIndex,
+    playlist,
+  });
+
   // find free seats
   const freeSeats = seats
-    .map((v, i) => v === null ? i : null)
-    .filter(v => v !== null);
+    .map((v, i) => (v === null ? i : null))
+    .filter((v) => v !== null);
 
   if (freeSeats.length === 0) {
-    console.log("cinema full");
+    console.log('cinema full');
     return;
   }
 
@@ -68,3 +88,27 @@ io.on("connection", (socket) => {
     io.emit('seatUpdate', seats);
   });
 });
+
+// ----- VIDEO PLAYBACK CONTROL FROM SERVER ----- //
+function playVideo() {
+  startedAt = Date.now() - pausedAt * 1000;
+  isPlaying = true;
+
+  io.emit('player-state', {
+    videoUrl: getCurrentVideo(),
+    isPlaying: true,
+    time: getCurrentTime(),
+  });
+}
+
+function pauseVideo() {
+  pausedAt = getCurrentTime();
+  isPlaying = false;
+
+  io.emit('player-state', {
+    videoUrl: getCurrentVideo(),
+    isPlaying: false,
+    time: pausedAt,
+  });
+}
+
