@@ -20,7 +20,7 @@ const server = http.createServer(app); //socket.io needs an http server
 const io = new Server(server);
 const port = process.env.PORT || 3500;
 
-let userId = [];
+let users = {};
 
 const totalSeats = 40;
 let seats = Array(totalSeats).fill(null);
@@ -40,10 +40,31 @@ await open(`http://localhost:${port}`); //opens in your default browser
 
 // Callback function for when our P5.JS sketch connects
 io.on('connection', (socket) => {
-  console.log('client connected:', socket.id);
-  // Add the new user's ID to the userId array
-  userId.push(socket.id);
+  socket.on('register-user', ({ name }) => {
+    users[socket.id] = { name };
+    console.log('User registered:', name);
 
+    // ---- SEAT ASSIGNMENT (NOW SAFE) ----
+    const freeSeats = seats
+      .map((v, i) => (v === null ? i : null))
+      .filter((v) => v !== null);
+
+    if (freeSeats.length === 0) {
+      console.log('cinema full');
+      return;
+    }
+
+    const seatIndex = freeSeats[Math.floor(Math.random() * freeSeats.length)];
+    seats[seatIndex] = {
+      id: socket.id,
+      name,
+    };
+
+    socket.emit('seat-assignment', seatIndex);
+    io.emit('seat-update', seats);
+  });
+
+  // Send playback state (this is fine on connect)
   socket.emit('player-state', {
     videoUrl: getCurrentVideo(),
     isPlaying,
@@ -55,37 +76,14 @@ io.on('connection', (socket) => {
     playlist,
   });
 
-  // find free seats
-  const freeSeats = seats
-    .map((v, i) => (v === null ? i : null))
-    .filter((v) => v !== null);
-
-  if (freeSeats.length === 0) {
-    console.log('cinema full');
-    return;
-  }
-
-  const seatIndex = freeSeats[Math.floor(Math.random() * freeSeats.length)];
-  seats[seatIndex] = socket.id;
-
-  // Send the assigned seat index back to the client
-  socket.emit('seat-assignment', seatIndex);
-
-  // Broadcast the updated seats to all clients
-  socket.emit('seat-update', seats);
-
-  socket.broadcast.emit('seat-update', seats);
-
   socket.on('disconnect', () => {
     console.log('client disconnected:', socket.id);
-    // Remove the disconnected user's ID from the userId array
-    userId = userId.filter((id) => id !== socket.id);
+    delete users[socket.id];
 
-    // Find the index of the seat assigned to the disconnected user and set it to null
-    const index = seats.indexOf(socket.id);
+    const index = seats.findIndex((seat) => seat?.id === socket.id);
     if (index !== -1) seats[index] = null;
 
-    io.emit('seatUpdate', seats);
+    io.emit('seat-update', seats);
   });
 });
 
@@ -111,4 +109,3 @@ function pauseVideo() {
     time: pausedAt,
   });
 }
-

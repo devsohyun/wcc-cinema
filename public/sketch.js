@@ -4,7 +4,6 @@ const socket = io();
 let ytDiv;
 // Seat settings
 const seatSize = 100;
-const seatRadius = 8;
 const rows = 4;
 const cols = 10;
 
@@ -12,7 +11,6 @@ let seats = [];
 let seatMap = [];
 let mySeat = null;
 let username = '';
-let isDebugging = true;
 
 // Youtube
 let player;
@@ -23,6 +21,38 @@ let audioUnlocked = false;
 let playlist = [];
 let currentIndex = 0;
 let currentVideoUrl = null;
+
+let userReady = false;
+
+// Grab DOM elements
+const popupContainer = document.querySelector('.popup-container');
+const popupInput = document.querySelector('.popup input');
+const popupButton = document.querySelector('.popup button');
+
+popupButton.addEventListener('click', () => {
+  const value = popupInput.value.trim();
+  if (!value) return;
+
+  username = value;
+  popupContainer.style.display = 'none';
+  userReady = true;
+
+  socket.emit('register-user', { name: username });
+
+  // DIRECTLY load and play video as part of this user gesture
+  if (playerReady && !audioUnlocked) {
+    const { videoUrl, isPlaying, time } = serverState || {};
+    const videoId = getYouTubeID(videoUrl || '9kK86zmhpWc'); // fallback
+
+    if (videoId) {
+      // load video and unmute in same user gesture
+      player.loadVideoById(videoId, time || 0);
+      player.unMute();
+      player.setVolume(50);
+      audioUnlocked = true;
+    }
+  }
+});
 
 var done = false;
 function onPlayerStateChange(event) {
@@ -39,7 +69,7 @@ function onYouTubeIframeAPIReady() {
   player = new YT.Player('player', {
     width: '640',
     height: '390',
-    videoId: 'JRnDYB28bL8', // TEMPORARY bootstrap video (never relied on)
+    videoId: '9kK86zmhpWc', // temporary id. Otherwise it breaks.
 
     playerVars: {
       playsinline: 1,
@@ -54,37 +84,31 @@ function onYouTubeIframeAPIReady() {
       onReady: onPlayerReady,
     },
   });
-
-  console.log(player);
 }
 
 function onPlayerReady() {
   console.log('Player ready');
-  playerReady = true; 
-  trySyncPlayer(); 
+  playerReady = true;
+
+  if (userReady) {
+    trySyncPlayer();
+  }
 }
 
 function setup() {
-  if (!isDebugging) {
-    username = prompt("What's your username?");
-    alert('Welcome to the cinema, ' + username + '!');
-  } else {
-    username = 'Guest';
-  }
-
   createCanvas(windowWidth, windowHeight);
   setSeats();
-
-  
 }
 
 function draw() {
+  if (!userReady) return;
+
   background(20);
 
   // Draw screen frame
   // fill(30) didn't work, so I had to use the drawingContext to set the fill color
   drawingContext.fillStyle = 'rgb(48, 48, 48)';
-  rect(width / 2 - 320, 20, 640, 360, 20, 20, 0, 0);
+  rect(width / 2 - 340, 35, 680, 440, 20);
 
   // Draw seats
   for (let i = 0; i < seats.length; i++) {
@@ -108,14 +132,20 @@ function draw() {
     rect(x, y, seatSize - 6, seatSize - 6, 20, 20, 5, 5);
 
     // draw user if occupied
-    if (seatMap[i]) {
-      if (seatMap[i] === socket.id) {
+    const seatUser = seatMap[i];
+
+    if (seatUser) {
+      textAlign(CENTER);
+      textSize(15);
+
+      if (seatUser.id === socket.id) {
         fill(0, 200, 255); // me
-        circle(x + seatSize / 2 - 3, y + seatSize / 2 - 3, 18);
-        text(username, x + 10, y + seatSize / 2 + 5);
+        arc(x + seatSize / 2 - 3, y + seatSize / 2 - 50, 50, 50, PI, TWO_PI);
+        text(seatUser.name, x + seatSize / 2 - 6, y - seatSize / 2 + 2);
       } else {
         fill(200); // others
-        circle(x + seatSize / 2 - 3, y + seatSize / 2 - 3, 18);
+        arc(x + seatSize / 2 - 3, y + seatSize / 2 - 50, 50, 50, PI, TWO_PI);
+        text(seatUser.name, x + seatSize / 2 - 6, y - seatSize / 2 + 2);
       }
     }
     pop();
@@ -124,7 +154,7 @@ function draw() {
 
 function setSeats() {
   const startX = width / 2 - (cols * seatSize) / 2;
-  const startY = height / 2;
+  const startY = height - rows * seatSize;
 
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -158,13 +188,16 @@ socket.on('playlist-update', (data) => {
 
 socket.on('player-state', (state) => {
   console.log('player-state received', state);
-  serverState = state;            
-  trySyncPlayer();                
+  serverState = state;
+  // only sync if player ready AND user ready
+  if (playerReady && userReady) {
+    trySyncPlayer();
+  }
 });
 
 // Sync the YouTube player based on the latest server state
 function trySyncPlayer() {
-  if (!playerReady || !serverState) return;
+  if (!playerReady || !serverState || !userReady) return;
 
   const { videoUrl, isPlaying, time } = serverState;
   const videoId = getYouTubeID(videoUrl);
@@ -172,9 +205,7 @@ function trySyncPlayer() {
   if (!videoId) return;
 
   const current = player.getVideoData()?.video_id;
-  console.log(current);
-  console.log(videoId);
-  
+
   if (current !== videoId) {
     player.loadVideoById(videoId, time);
   } else {
@@ -205,14 +236,5 @@ function keyPressed() {
     //switch it to the opposite of current value
     console.log('Full screen getting set to: ' + !fs);
     fullscreen(!fs);
-  }
-}
-
-function mousePressed() {
-  if (!audioUnlocked && playerReady) {
-    player.unMute();
-    player.setVolume(20);
-    player.playVideo();
-    audioUnlocked = true;
   }
 }

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <title>Cinema</title>
@@ -10,11 +11,20 @@
   <!-- YouTube API MUST load before sketch uses it -->
   <script src="https://www.youtube.com/iframe_api"></script>
 </head>
+
 <body>
+  <div class="popup-container">
+    <div class="popup">
+      <p>Type your username</p>
+      <input type="text">
+      <button>Confirm</button>
+    </div>
+  </div>
   <div class="video-container">
-      <div id="player"></div>
+    <div id="player"></div>
 
   </div>
   <script src="sketch.js"></script>
 </body>
+
 </html>
