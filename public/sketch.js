@@ -4,7 +4,7 @@ const socket = io();
 let ytDiv;
 // Seat settings
 const seatSize = 100;
-const rows = 4;
+const rows = 3;
 const cols = 10;
 
 let seats = [];
@@ -38,6 +38,8 @@ popupButton.addEventListener('click', () => {
   userReady = true;
 
   socket.emit('register-user', { name: username });
+
+  socket.emit('request-playlist');
 
   // DIRECTLY load and play video as part of this user gesture
   if (playerReady && !audioUnlocked) {
@@ -101,8 +103,10 @@ function setup() {
 }
 
 function draw() {
+  
   if (!userReady) return;
-
+  
+  console.log(serverState.time);
   background(20);
 
   // Draw screen frame
@@ -170,11 +174,6 @@ function setSeats() {
 // Connect to Node.JS Server
 socket.on('connect', () => {
   console.log('Connected to server:', socket.id);
-});
-
-socket.on('assignment', (seatIndex) => {
-  mySeat = seatIndex;
-  console.log('Assigned seat:', seatIndex);
 });
 
 socket.on('seat-update', (serverSeats) => {

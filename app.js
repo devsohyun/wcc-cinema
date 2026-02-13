@@ -20,6 +20,7 @@ const server = http.createServer(app); //socket.io needs an http server
 const io = new Server(server);
 const port = process.env.PORT || 3500;
 
+let gameState = 'waiting'; // 'waiting', 'playing', 'ended'
 let users = {};
 
 const totalSeats = 40;
@@ -44,7 +45,7 @@ io.on('connection', (socket) => {
     users[socket.id] = { name };
     console.log('User registered:', name);
 
-    // ---- SEAT ASSIGNMENT (NOW SAFE) ----
+    // ---- SEAT ASSIGNMENT ----
     const freeSeats = seats
       .map((v, i) => (v === null ? i : null))
       .filter((v) => v !== null);
