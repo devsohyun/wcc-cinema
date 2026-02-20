@@ -94,6 +94,23 @@ io.on('connection', (socket) => {
     io.emit('seat-update', seats);
   });
 
+  socket.on('video-ended', () => {
+    const nextVideo = nextVideoIndex(); // remove current, advance
+
+    // Broadcast updated playlist
+    io.emit('playlist-update', {
+      currentIndex,
+      playlist,
+    });
+
+    // Broadcast new player state
+    io.emit('player-state', {
+      video: nextVideo,
+      isPlaying,
+      time: getCurrentTime(),
+    });
+  });
+
   socket.on('disconnect', () => {
     delete users[socket.id];
 

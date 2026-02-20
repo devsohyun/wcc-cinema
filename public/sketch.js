@@ -113,6 +113,7 @@ function onYouTubeIframeAPIReady() {
     },
     events: {
       onReady: onPlayerReady,
+      onStateChange: onPlayerStateChange,
     },
   });
 
@@ -135,6 +136,12 @@ function onPlayerReady() {
 
   if (userReady) {
     trySyncPlayer();
+  }
+}
+
+function onPlayerStateChange(event) {
+  if (event.data === YT.PlayerState.ENDED) {
+    socket.emit('video-ended');
   }
 }
 
