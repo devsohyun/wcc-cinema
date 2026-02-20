@@ -16,14 +16,31 @@
   <div class="popup-container">
     <div class="popup">
       <p>Type your username</p>
-      <input type="text">
+      <input class="username" type="text">
+      <p>Youtube video link you want to watch together</p>
+      <input class="url" type="text" placeholder="Make sure to use Youtube URL">
       <button>Confirm</button>
     </div>
   </div>
+
   <div class="video-container">
     <div id="player"></div>
-
   </div>
+
+  <div class="schedule-panel">
+    <h2>Screening Schedule</h2>
+
+    <div class="current-section">
+      <h3>Current</h3>
+      <p id="current-video">None</p>
+    </div>
+
+    <div class="next-section">
+      <h3>Next</h3>
+      <ul id="next-list"></ul>
+    </div>
+  </div>
+
   <script src="sketch.js"></script>
 </body>
 

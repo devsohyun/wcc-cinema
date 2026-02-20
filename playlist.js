@@ -1,20 +1,39 @@
 export const playlist = [
-  'https://www.youtube.com/watch?v=9kK86zmhpWc',
-  'https://www.youtube.com/watch?v=3i8bfYdAMjg',
-  'https://www.youtube.com/watch?v=M32egVO2bok',
-  'https://www.youtube.com/watch?v=JRnDYB28bL8&list=RDJRnDYB28bL8&start_radio=1&t=3290s',
+  // { url: '...', title: '...' }
 ];
 
 export let currentIndex = 0;
-export let isPlaying = true;
-export let startedAt = null; // Date.now()
+export let isPlaying = false; // start as NOT playing
+export let startedAt = null;
 export let pausedAt = 0;
 
+// Return full video object
 export function getCurrentVideo() {
-  return playlist[currentIndex];
+  if (playlist.length === 0) return null;
+  return playlist[currentIndex] || null;
 }
 
 export function getCurrentTime() {
+  if (!startedAt) return 0;
+
   if (!isPlaying) return pausedAt;
+
   return (Date.now() - startedAt) / 1000;
+}
+
+// ---- CONTROL FUNCTIONS (IMPORTANT) ---- //
+
+export function startPlayback() {
+  startedAt = Date.now();
+  pausedAt = 0;
+  isPlaying = true;
+}
+
+export function nextVideoIndex() {
+  if (playlist.length === 0) return;
+
+  currentIndex = (currentIndex + 1) % playlist.length;
+  startedAt = Date.now();
+  pausedAt = 0;
+  isPlaying = true;
 }

@@ -1,8 +1,27 @@
-// Create connection to Node.JS Server
+// ----- SOCKET CONNECTION ----- //
 const socket = io();
-// Youtube video settings
-let ytDiv;
-// Seat settings
+
+// ----- GLOBAL STATE ----- //
+// Youtube
+let player;
+let playerReady = false;
+let serverState = {
+  video: null,
+  isPlaying: false,
+  time: 0,
+};
+let audioUnlocked = false;
+
+// Playlist
+let playlist = [];
+let currentIndex = 0;
+let currentVideoUrl = null;
+
+// User
+let username = '';
+let userReady = false;
+
+// Seats
 const seatSize = 100;
 const rows = 3;
 const cols = 10;
@@ -10,60 +29,69 @@ const cols = 10;
 let seats = [];
 let seatMap = [];
 let mySeat = null;
-let username = '';
 
-// Youtube
-let player;
-let playerReady = false; // YouTube ready
-let serverState = null; // last player-state from server
-let audioUnlocked = false;
-
-let playlist = [];
-let currentIndex = 0;
-let currentVideoUrl = null;
-
-let userReady = false;
-
-// Grab DOM elements
+// ----- GRAB DOM ELEMENTS ----- //
 const popupContainer = document.querySelector('.popup-container');
-const popupInput = document.querySelector('.popup input');
+const popupUsernameInput = document.querySelector('.popup .username');
+const popupUrlInput = document.querySelector('.popup .url');
 const popupButton = document.querySelector('.popup button');
 
+/// ----- EVENT LISTENERS ----- //
+// popup click handler
 popupButton.addEventListener('click', () => {
-  const value = popupInput.value.trim();
-  if (!value) return;
+  const usernameValue = popupUsernameInput.value.trim();
+  const urlValue = popupUrlInput.value.trim();
+  const isYtUrl = urlValue.startsWith('https://www.youtube.com');
 
-  username = value;
-  popupContainer.style.display = 'none';
+  if (!usernameValue || !urlValue || !isYtUrl) return;
+
+  username = usernameValue;
   userReady = true;
 
-  socket.emit('register-user', { name: username });
+  popupContainer.style.display = 'none';
 
-  socket.emit('request-playlist');
+  // Register user to server
+  socket.emit('register-user', {
+    name: username,
+    url: urlValue,
+  });
 
-  // DIRECTLY load and play video as part of this user gesture
+  // Unlock audio (required by browser)
   if (playerReady && !audioUnlocked) {
-    const { videoUrl, isPlaying, time } = serverState || {};
-    const videoId = getYouTubeID(videoUrl || '9kK86zmhpWc'); // fallback
-
-    if (videoId) {
-      // load video and unmute in same user gesture
-      player.loadVideoById(videoId, time || 0);
-      player.unMute();
-      player.setVolume(50);
-      audioUnlocked = true;
-    }
+    player.unMute();
+    player.setVolume(50);
+    audioUnlocked = true;
   }
 });
 
-var done = false;
-function onPlayerStateChange(event) {
-  if (event.data == YT.PlayerState.PLAYING && !done) {
-    setTimeout(stopVideo, 6000);
-    done = true;
-  }
-}
+// ----- SOCKETS ----- //
+socket.on('connect', () => {
+  console.log('Connected to server:', socket.id);
+});
 
+socket.on('seat-update', (serverSeats) => {
+  seatMap = serverSeats;
+});
+
+// Set server state
+socket.on('player-state', (state) => {
+  console.log('player-state received', state);
+  // SETTING SERVER STATE
+  serverState = state;
+  // only sync if player ready AND user ready
+  if (playerReady && userReady) {
+    trySyncPlayer();
+  }
+});
+
+socket.on('playlist-update', (data) => {
+  currentIndex = data.currentIndex;
+  playlist = data.playlist;
+
+  updateScheduleUI();
+});
+
+// ----- YOUTUBE API ----- //
 function onYouTubeIframeAPIReady() {
   console.log('YouTube API ready');
 
@@ -86,6 +114,18 @@ function onYouTubeIframeAPIReady() {
       onReady: onPlayerReady,
     },
   });
+
+  player.addEventListener('playing', () => {
+    console.log('playing');
+  });
+
+  player.addEventListener('pause', () => {
+    console.log('paused');
+  });
+
+  player.addEventListener('ended', () => {
+    console.log('video ended');
+  });
 }
 
 function onPlayerReady() {
@@ -97,22 +137,19 @@ function onPlayerReady() {
   }
 }
 
+// ----- P5 STANDARD FUNCTIONS ----- //
 function setup() {
   createCanvas(windowWidth, windowHeight);
   setSeats();
 }
 
 function draw() {
-  
   if (!userReady) return;
-  
-  console.log(serverState.time);
+
   background(20);
 
-  // Draw screen frame
-  // fill(30) didn't work, so I had to use the drawingContext to set the fill color
-  drawingContext.fillStyle = 'rgb(48, 48, 48)';
-  rect(width / 2 - 340, 35, 680, 440, 20);
+  // Draw schedule board
+  // drawScheduleBoard(playlist[0], playlist);
 
   // Draw seats
   for (let i = 0; i < seats.length; i++) {
@@ -121,7 +158,6 @@ function draw() {
 
     if (i >= 10 && i < 20) y -= 20;
     if (i >= 20 && i < 30) y -= 40;
-    if (i >= 30 && i < 40) y -= 60;
 
     // draw seat
     // Tutorial: https://youtu.be/-MUOweQ6wac?si=OMJoxkXFqYlMGpmw
@@ -156,6 +192,7 @@ function draw() {
   }
 }
 
+// ----- UI ----- //
 function setSeats() {
   const startX = width / 2 - (cols * seatSize) / 2;
   const startY = height - rows * seatSize;
@@ -171,35 +208,92 @@ function setSeats() {
   }
 }
 
-// Connect to Node.JS Server
-socket.on('connect', () => {
-  console.log('Connected to server:', socket.id);
-});
+function updateScheduleUI() {
+  const currentVideo = document.getElementById('current-video');
+  const nextVideoList = document.getElementById('next-list');
 
-socket.on('seat-update', (serverSeats) => {
-  seatMap = serverSeats;
-});
-
-socket.on('playlist-update', (data) => {
-  playlist = data.playlist;
-  currentIndex = data.currentIndex;
-});
-
-socket.on('player-state', (state) => {
-  console.log('player-state received', state);
-  serverState = state;
-  // only sync if player ready AND user ready
-  if (playerReady && userReady) {
-    trySyncPlayer();
+  if (!playlist || playlist.length === 0) {
+    currentVideo.textContent = 'None';
+    nextVideoList.innerHTML = '';
+    return;
   }
-});
 
-// Sync the YouTube player based on the latest server state
+  // Current
+  currentVideo.textContent = playlist[currentIndex]?.title || 'None';
+
+  // Next queue
+  nextVideoList.innerHTML = '';
+
+  for (let i = currentIndex + 1; i < playlist.length; i++) {
+    const li = document.createElement('li');
+    li.textContent = playlist[i].title;
+    nextVideoList.appendChild(li);
+  }
+}
+
+function drawScheduleBoard(currentVideo, playlist) {
+  const margin = 20;
+  const boardSize = 260;
+  const x = width - boardSize - margin;
+  const y = margin;
+
+  // Remove current video from queue if it exists there
+  let queue = playlist.filter((video) => video !== currentVideo);
+
+  push();
+
+  // Board
+  fill(20, 20, 20, 220);
+  stroke(255);
+  strokeWeight(1);
+  rect(x, y, boardSize, boardSize, 12);
+
+  // Text style
+  fill(255);
+  noStroke();
+  textAlign(LEFT, TOP);
+  textSize(14);
+
+  let lineHeight = 22;
+  let padding = 15;
+  let textY = y + padding;
+
+  // Title
+  textStyle(BOLD);
+  text('SCREENING SCHEDULE', x + padding, textY);
+  textStyle(NORMAL);
+
+  textY += lineHeight * 1.5;
+
+  // Current
+  text('Current:', x + padding, textY);
+  text(currentVideo || 'None', x + padding + 70, textY);
+  textY += lineHeight * 1.5;
+
+  // Only show Next section if queue has videos
+  if (queue.length > 0) {
+    text('Next:', x + padding, textY);
+    textY += lineHeight;
+
+    for (let i = 0; i < min(4, queue.length); i++) {
+      text(i + 1 + '. ' + queue[i], x + padding + 10, textY);
+      textY += lineHeight;
+    }
+  }
+
+  pop();
+}
+
+// ***** IMPORTANT *****
+// ----- PLAYER SYNC LOGIC ----- //
 function trySyncPlayer() {
   if (!playerReady || !serverState || !userReady) return;
 
-  const { videoUrl, isPlaying, time } = serverState;
-  const videoId = getYouTubeID(videoUrl);
+  const { video, isPlaying, time } = serverState;
+
+  if (!video || !video.url) return;
+
+  const videoId = getYouTubeID(video.url);
 
   if (!videoId) return;
 
@@ -209,7 +303,7 @@ function trySyncPlayer() {
     player.loadVideoById(videoId, time);
   } else {
     player.seekTo(time, true);
-    isPlaying ? player.playVideo() : player.pauseVideo();
+    if (isPlaying) player.playVideo();
   }
 }
 
