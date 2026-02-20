@@ -15,7 +15,6 @@ let audioUnlocked = false;
 // Playlist
 let playlist = [];
 let currentIndex = 0;
-let currentVideoUrl = null;
 
 // User
 let username = '';
@@ -23,8 +22,9 @@ let userReady = false;
 
 // Seats
 const seatSize = 100;
-const rows = 3;
-const cols = 10;
+const seatRows = 3;
+const seatCols = 10;
+const totalSeats = seatRows * seatCols;
 
 let seats = [];
 let seatMap = [];
@@ -36,9 +36,23 @@ const popupUsernameInput = document.querySelector('.popup .username');
 const popupUrlInput = document.querySelector('.popup .url');
 const popupButton = document.querySelector('.popup button');
 
+// ----- FETCH YOUTUBE TITLE BEFORE SENDING TO SERVER ----- //
+async function fetchYouTubeTitle(url) {
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=${url}&format=json`,
+    );
+    const data = await res.json();
+    return data.title;
+  } catch (err) {
+    console.error('Failed to fetch title', err);
+    return url; // fallback
+  }
+}
+
 /// ----- EVENT LISTENERS ----- //
 // popup click handler
-popupButton.addEventListener('click', () => {
+popupButton.addEventListener('click', async() => {
   const usernameValue = popupUsernameInput.value.trim();
   const urlValue = popupUrlInput.value.trim();
   const isYtUrl = urlValue.startsWith('https://www.youtube.com');
@@ -48,13 +62,16 @@ popupButton.addEventListener('click', () => {
   username = usernameValue;
   userReady = true;
   
-
   popupContainer.style.display = 'none';
+
+  // Fetch YouTube title before sending to server
+  const ytTitle = await fetchYouTubeTitle(urlValue);
 
   // Register user to server
   socket.emit('register-user', {
     name: username,
     url: urlValue,
+    title: ytTitle,
   });
 
   // Unlock audio (required by browser)
@@ -66,8 +83,21 @@ popupButton.addEventListener('click', () => {
 });
 
 // ----- SOCKETS ----- //
-socket.on('connect', () => {
-  console.log('Connected to server:', socket.id);
+socket.on('seat-assignment', (seatIndex) => {
+  mySeat = seatIndex;
+  userReady = true;
+  popupContainer.style.display = 'none';
+
+  if (playerReady && !audioUnlocked) {
+    player.unMute();
+    player.setVolume(50);
+    audioUnlocked = true;
+  }
+});
+
+socket.on('room-full', () => {
+  alert('Cinema is full.');
+  location.reload();
 });
 
 socket.on('seat-update', (serverSeats) => {
@@ -161,8 +191,8 @@ function draw() {
     let x = seats[i].x;
     let y = seats[i].y;
 
-    if (i >= 10 && i < 20) y -= 20;
-    if (i >= 20 && i < 30) y -= 40;
+    const rowIndex = Math.floor(i / seatCols);
+    y -= rowIndex * 20;
 
     // draw seat
     // Tutorial: https://youtu.be/-MUOweQ6wac?si=OMJoxkXFqYlMGpmw
@@ -199,15 +229,14 @@ function draw() {
 
 // ----- UI ----- //
 function setSeats() {
-  const startX = width / 2 - (cols * seatSize) / 2;
-  const startY = height - rows * seatSize;
+  const startX = width / 2 - (seatCols * seatSize) / 2;
+  const startY = height - seatRows * seatSize;
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
+  for (let r = 0; r < seatRows; r++) {
+    for (let c = 0; c < seatCols; c++) {
       seats.push({
         x: startX + c * seatSize,
         y: startY + r * seatSize,
-        userId: null,
       });
     }
   }
@@ -257,14 +286,6 @@ function trySyncPlayer() {
     player.seekTo(time, true);
     if (isPlaying) player.playVideo();
   }
-
-  setTimeout(() => {
-    const videoData = player.getVideoData();
-    if (videoData?.title) {
-      playlist[currentIndex].title = videoData.title;
-      updateScheduleUI();
-    }
-  }, 800);
 }
 
 // ----- UTILITY FUNCTIONS ----- //

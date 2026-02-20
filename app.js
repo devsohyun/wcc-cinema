@@ -21,12 +21,6 @@ const server = http.createServer(app); //socket.io needs an http server
 const io = new Server(server);
 const port = process.env.PORT || 3500;
 
-// let gameState = 'waiting'; // 'waiting', 'playing', 'ended'
-let users = {};
-
-const totalSeats = 40;
-let seats = Array(totalSeats).fill(null);
-
 //Tell our Node.js Server to host our P5.JS sketch from the public folder
 app.use(express.static('public'));
 
@@ -40,49 +34,50 @@ server.listen(port, () => {
 await open(`http://localhost:${port}`); //opens in your default browser
 //// REMOVE IF YOU PUT ON RENDER //////
 
-// Callback function for when our P5.JS sketch connects
+// Seat configuration
+const seatRows = 3;
+const seatCols = 10;
+const totalSeats = seatRows * seatCols;
+
+let seats = Array(totalSeats).fill(null);
+let users = {};
+let advancingVideo = false;
+
+// Socket connections
 io.on('connection', (socket) => {
   // immediately send current state on connection
+  console.log('New connection:', socket.id);
+
+  // Send current state immediately
   socket.emit('player-state', {
     video: getCurrentVideo(),
     isPlaying,
     time: getCurrentTime(),
   });
 
+  // Register user
   socket.on('register-user', ({ name, url, title }) => {
-    users[socket.id] = { name };
-
-    // Add video to playlist
-    playlist.push({
-      url,
-      title: url, // placeholder
-    });
-
-    // If this is the FIRST video, start playback
-    if (playlist.length === 1) {
-      startPlayback();
-    }
-
-    // Send updated playlist to all clients
-    io.emit('playlist-update', {
-      currentIndex,
-      playlist,
-    });
-
-    // Broadcast updated player state to all
-    io.emit('player-state', {
-      video: getCurrentVideo(),
-      isPlaying,
-      time: getCurrentTime(),
-    });
-
-    // ---- SEAT ASSIGNMENT ----
+    // Check seat availability FIRST
     const freeSeats = seats
       .map((v, i) => (v === null ? i : null))
       .filter((v) => v !== null);
 
-    if (freeSeats.length === 0) return;
+    if (freeSeats.length === 0) {
+      socket.emit('room-full');
+      return;
+    }
 
+    // Register user
+    users[socket.id] = { name };
+
+    // Add video to playlist
+    playlist.push({ url, title });
+
+    if (playlist.length === 1) {
+      startPlayback();
+    }
+
+    // Assign random seat
     const seatIndex = freeSeats[Math.floor(Math.random() * freeSeats.length)];
 
     seats[seatIndex] = {
@@ -92,9 +87,24 @@ io.on('connection', (socket) => {
 
     socket.emit('seat-assignment', seatIndex);
     io.emit('seat-update', seats);
+
+    io.emit('playlist-update', {
+      currentIndex,
+      playlist,
+    });
+
+    io.emit('player-state', {
+      video: getCurrentVideo(),
+      isPlaying,
+      time: getCurrentTime(),
+    });
   });
 
+  // Handle video end
   socket.on('video-ended', () => {
+    if (advancingVideo) return;
+    advancingVideo = true;
+
     const nextVideo = nextVideoIndex(); // remove current, advance
 
     // Broadcast updated playlist
@@ -109,6 +119,11 @@ io.on('connection', (socket) => {
       isPlaying,
       time: getCurrentTime(),
     });
+
+    // release lock shortly after to allow next video to advance when it ends
+    setTimeout(() => {
+      advancingVideo = false;
+    }, 500);
   });
 
   socket.on('disconnect', () => {
