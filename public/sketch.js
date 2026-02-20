@@ -42,11 +42,12 @@ popupButton.addEventListener('click', () => {
   const usernameValue = popupUsernameInput.value.trim();
   const urlValue = popupUrlInput.value.trim();
   const isYtUrl = urlValue.startsWith('https://www.youtube.com');
-
+  
   if (!usernameValue || !urlValue || !isYtUrl) return;
 
   username = usernameValue;
   userReady = true;
+  
 
   popupContainer.style.display = 'none';
 
@@ -148,9 +149,6 @@ function draw() {
 
   background(20);
 
-  // Draw schedule board
-  // drawScheduleBoard(playlist[0], playlist);
-
   // Draw seats
   for (let i = 0; i < seats.length; i++) {
     let x = seats[i].x;
@@ -218,10 +216,10 @@ function updateScheduleUI() {
     return;
   }
 
-  // Current
+  // current
   currentVideo.textContent = playlist[currentIndex]?.title || 'None';
 
-  // Next queue
+  // next queue
   nextVideoList.innerHTML = '';
 
   for (let i = currentIndex + 1; i < playlist.length; i++) {
@@ -229,59 +227,6 @@ function updateScheduleUI() {
     li.textContent = playlist[i].title;
     nextVideoList.appendChild(li);
   }
-}
-
-function drawScheduleBoard(currentVideo, playlist) {
-  const margin = 20;
-  const boardSize = 260;
-  const x = width - boardSize - margin;
-  const y = margin;
-
-  // Remove current video from queue if it exists there
-  let queue = playlist.filter((video) => video !== currentVideo);
-
-  push();
-
-  // Board
-  fill(20, 20, 20, 220);
-  stroke(255);
-  strokeWeight(1);
-  rect(x, y, boardSize, boardSize, 12);
-
-  // Text style
-  fill(255);
-  noStroke();
-  textAlign(LEFT, TOP);
-  textSize(14);
-
-  let lineHeight = 22;
-  let padding = 15;
-  let textY = y + padding;
-
-  // Title
-  textStyle(BOLD);
-  text('SCREENING SCHEDULE', x + padding, textY);
-  textStyle(NORMAL);
-
-  textY += lineHeight * 1.5;
-
-  // Current
-  text('Current:', x + padding, textY);
-  text(currentVideo || 'None', x + padding + 70, textY);
-  textY += lineHeight * 1.5;
-
-  // Only show Next section if queue has videos
-  if (queue.length > 0) {
-    text('Next:', x + padding, textY);
-    textY += lineHeight;
-
-    for (let i = 0; i < min(4, queue.length); i++) {
-      text(i + 1 + '. ' + queue[i], x + padding + 10, textY);
-      textY += lineHeight;
-    }
-  }
-
-  pop();
 }
 
 // ***** IMPORTANT *****
@@ -305,6 +250,14 @@ function trySyncPlayer() {
     player.seekTo(time, true);
     if (isPlaying) player.playVideo();
   }
+
+  setTimeout(() => {
+    const videoData = player.getVideoData();
+    if (videoData?.title) {
+      playlist[currentIndex].title = videoData.title;
+      updateScheduleUI();
+    }
+  }, 800);
 }
 
 // ----- UTILITY FUNCTIONS ----- //

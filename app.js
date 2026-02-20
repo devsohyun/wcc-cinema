@@ -49,11 +49,14 @@ io.on('connection', (socket) => {
     time: getCurrentTime(),
   });
 
-  socket.on('register-user', ({ name, url }) => {
+  socket.on('register-user', ({ name, url, title }) => {
     users[socket.id] = { name };
 
     // Add video to playlist
-    playlist.push({ url, title: url });
+    playlist.push({
+      url,
+      title: url, // placeholder
+    });
 
     // If this is the FIRST video, start playback
     if (playlist.length === 1) {
