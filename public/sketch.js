@@ -35,6 +35,7 @@ const popupContainer = document.querySelector('.popup-container');
 const popupUsernameInput = document.querySelector('.popup .username');
 const popupUrlInput = document.querySelector('.popup .url');
 const popupButton = document.querySelector('.popup button');
+const videoContainer = document.querySelector('.video-container');
 
 // ----- FETCH YOUTUBE TITLE BEFORE SENDING TO SERVER ----- //
 async function fetchYouTubeTitle(url) {
@@ -182,7 +183,12 @@ function setup() {
 }
 
 function draw() {
-  if (!userReady) return;
+  if (!userReady) {
+    videoContainer.style.display = 'none';
+    return;
+  } else {
+    videoContainer.style.display = 'block';
+  }
 
   background(20);
 
