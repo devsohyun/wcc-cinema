@@ -53,16 +53,16 @@ async function fetchYouTubeTitle(url) {
 
 /// ----- EVENT LISTENERS ----- //
 // popup click handler
-popupButton.addEventListener('click', async() => {
+popupButton.addEventListener('click', async () => {
   const usernameValue = popupUsernameInput.value.trim();
   const urlValue = popupUrlInput.value.trim();
   const isYtUrl = urlValue.startsWith('https://www.youtube.com');
-  
+
   if (!usernameValue || !urlValue || !isYtUrl) return;
 
   username = usernameValue;
   userReady = true;
-  
+
   popupContainer.style.display = 'none';
 
   // Fetch YouTube title before sending to server
@@ -82,6 +82,18 @@ popupButton.addEventListener('click', async() => {
     audioUnlocked = true;
   }
 });
+
+// Enable button only when both fields have values
+function validateInputs() {
+  const username = popupUsernameInput.value.trim();
+  const urlValue = popupUrlInput.value.trim();
+  const isYtUrl = urlValue.startsWith('https://www.youtube.com');
+
+  popupButton.disabled = username === '' || urlValue === '' || !isYtUrl;
+}
+
+popupUsernameInput.addEventListener('input', validateInputs);
+popupUrlInput.addEventListener('input', validateInputs);
 
 // ----- SOCKETS ----- //
 socket.on('seat-assignment', (seatIndex) => {
