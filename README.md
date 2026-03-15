@@ -1,6 +1,8 @@
 # Cinema
 Cinema for everyone!
 
+Link to Git [repository](https://github.com/devsohyun/wcc-cinema)
+
 You can try it [here](https://wcc-cinema.onrender.com/).
 
 ## Description
