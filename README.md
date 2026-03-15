@@ -1,62 +1,35 @@
 # Cinema
+Cinema for everyone!
 
-Simple overview of use/purpose.
+You can try it [here](https://wcc-cinema.onrender.com/).
 
 ## Description
+This project was created as a term-time project for the Workshop for Creative Coding at Goldsmiths, University of London.
 
-An in-depth paragraph about your project and overview of use.
+Upon entering the cinema, you are prompted to enter a `username` and a YouTube video link. The video will be added to a shared playlist and played in order. Everyone in the cinema watches the same video at the same timestamp, making it a truly shared viewing experience.
 
 ## Getting Started
 
 ### Dependencies
-
-* Describe any prerequisites, libraries, OS version, etc., needed before installing program.
-* ex. Windows 10
+- `express`
+- `http`
 
 ### Installing
-
-* How/where to download your program
-* Any modifications needed to be made to files/folders
-
-### Executing program
-
-* How to run the program
-* Step-by-step bullets
+Install dependencies by running:
+```bash
+npm install
 ```
-code blocks for commands
+
+### Running the Program
+```bash
+node app.js
 ```
 
 ## Help
 
-Any advise for common problems or issues.
-```
-command to run if program contains helper info
-```
-
-## Authors
-
-Contributors names and contact info
-
-ex. Dominique Pizzie  
-ex. [@DomPizzie](https://twitter.com/dompizzie)
-
-## Version History
-
-* 0.2
-    * Various bug fixes and optimizations
-    * See [commit change]() or See [release history]()
-* 0.1
-    * Initial Release
-
-## License
-
-This project is licensed under the [NAME HERE] License - see the LICENSE.md file for details
-
-## Acknowledgments
-
-Inspiration, code snippets, etc.
-* [awesome-readme](https://github.com/matiassingers/awesome-readme)
-* [PurpleBooth](https://gist.github.com/PurpleBooth/109311bb0361f32d87a2)
-* [dbader](https://github.com/dbader/readme-template)
-* [zenorocha](https://gist.github.com/zenorocha/4526327)
-* [fvcproductions](https://gist.github.com/fvcproductions/1bfc2d4aecb01a834b46)
+### Cinema Rules and Limitations
+1. A username and a YouTube video link are required to enter the cinema.
+2. You can pause and play the video using the on-screen controls. To re-sync with other viewers, refresh the page and re-enter the cinema.
+3. There is no system to clear previously added videos from the playlist.
+4. If someone adds very long videos or repeatedly adds the same video, the only way to reset the playlist is to restart the server.
+5. Seat display may occasionally show incorrect user information — the cause is currently unknown.
