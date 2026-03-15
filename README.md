@@ -6,7 +6,7 @@ You can try it [here](https://wcc-cinema.onrender.com/).
 ## Description
 This project was created as a term-time project for the Workshop for Creative Coding at Goldsmiths, University of London.
 
-Upon entering the cinema, you are prompted to enter a `username` and a YouTube video link. The video will be added to a shared playlist and played in order. Everyone in the cinema watches the same video at the same timestamp, making it a truly shared viewing experience.
+Upon entering the cinema, you are prompted to enter a username and a YouTube video link. The video will be added to a shared playlist and played in order. Everyone in the cinema watches the same video at the same timestamp, making it a truly shared viewing experience.
 
 ## Getting Started
 
